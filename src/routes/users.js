@@ -4,9 +4,10 @@ const { User } = require('../model/user');
 
 // 用户注册
 router.post('/register', async (req, res, next) => {
+    const { username, password } = req.body;
     const user = await User.create({
-        username: req.body.username,
-        password: req.body.password
+        username,
+        password
     });
     res.send(user);
 });
@@ -14,7 +15,7 @@ router.post('/register', async (req, res, next) => {
 // 获取用户信息
 router.get('/info', async (req, res, next) => {
     const user = await User.findOne({
-        _id: req.user_id
+        _id: req.query.user_id
     });
     res.send({
         code: 200,
