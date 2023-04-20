@@ -1,4 +1,5 @@
-const mongoose = require('mongoose');
+const mongoose = require('../../db/mongodb2')
+const bcrypt = require('bcrypt')
 
 const UserSchema = new mongoose.Schema({
     username: { type: String, unique: true },

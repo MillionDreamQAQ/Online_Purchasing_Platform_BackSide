@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+const mongoose = require('../../db/mongodb2')
 
 const TemplateSchema = new mongoose.Schema({
     key: {type: String, unique: true},
