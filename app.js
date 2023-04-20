@@ -15,20 +15,13 @@ const app = express();
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
-
 // cors
 app.use(cors({ credentials: true, origin: true }));
-// app.use(function (req, res, next) {
-//     res.header("Access-Control-Allow-Credentials", true); //划重点
-//     res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:8080');
-//     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-//     next();
-// });
 
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
+app.use(cookieParser('dream'));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', indexRouter);
