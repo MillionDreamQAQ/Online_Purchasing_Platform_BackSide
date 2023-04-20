@@ -1,18 +1,60 @@
-var express = require('express');
-var router = express.Router();
+const express = require('express');
+const router = express.Router();
 const { User } = require('../model/user');
+const bcrypt = require('bcrypt');
 
-// 用户注册
 router.post('/register', async (req, res, next) => {
     const { username, password } = req.body;
-    const user = await User.create({
+    const user = await User.findOne({
+        username
+    });
+
+    if (user) {
+        res.send({
+            code: 400,
+            msg: '用户已存在'
+        });
+        return;
+    }
+
+    const newUser = await User.create({
         username,
         password
     });
-    res.send(user);
+    
+    if (newUser) {
+        res.send({
+            code: 200,
+            msg: '注册成功'
+        });
+    }
 });
 
-// 获取用户信息
+router.post('/login', async (req, res, next) => {
+    const { username, password } = req.body;
+    const user = await User.findOne({
+        username
+    }).select('+password');
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: '用户不存在'
+        });
+    } else {
+        if (bcrypt.compareSync(password, user.password)) {
+            res.send({
+                code: 200,
+                msg: '登录成功'
+            });
+        } else {
+            res.send({
+                code: 400,
+                msg: '密码错误'
+            });
+        }
+    }
+});
+
 router.get('/info', async (req, res, next) => {
     const user = await User.findOne({
         _id: req.query.user_id
@@ -23,7 +65,6 @@ router.get('/info', async (req, res, next) => {
     });
 });
 
-// 获取用户列表
 router.get('/list', async (req, res, next) => {
     const user = await User.find();
     res.send({

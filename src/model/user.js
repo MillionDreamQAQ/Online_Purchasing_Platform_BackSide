@@ -8,7 +8,7 @@ const UserSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        set(val){
+        set(val) {
             return bcrypt.hashSync(val, 10)
         },
         select: false
