@@ -50,6 +50,24 @@ router.post('/templateSelect', async (req, res, next) => {
     }
 });
 
+router.post('/delete', async (req, res, next) => {
+    const { quotationName } = req.body;
+    const quotation = await Quotation.findOneAndRemove({
+        quotationName
+    });
+    if (!quotation) {
+        res.send({
+            code: 400,
+            msg: '报价单不存在'
+        });
+    } else {
+        res.send({
+            code: 200,
+            msg: '删除成功'
+        });
+    }
+});
+
 router.get('/list', async (req, res, next) => {
     const quotations = await Quotation.find({}).select('-__v-_id');
     res.send({

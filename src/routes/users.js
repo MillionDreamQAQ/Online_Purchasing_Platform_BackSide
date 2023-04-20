@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { User } = require('../model/user');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 router.post('/register', async (req, res, next) => {
     const { username, password } = req.body;
@@ -42,9 +43,19 @@ router.post('/login', async (req, res, next) => {
         });
     } else {
         if (bcrypt.compareSync(password, user.password)) {
+            const payload = {username};
+            const secretKey = '!grape@city!';
+            const token = jwt.sign(payload, secretKey, {expiresIn: '1h'});
+
+            res.cookie('token', token, {
+                maxAge: 1000 * 60 * 60,
+                httpOnly: false
+            });
+
             res.send({
                 code: 200,
-                msg: '登录成功'
+                msg: '登录成功',
+                token: token
             });
         } else {
             res.send({
