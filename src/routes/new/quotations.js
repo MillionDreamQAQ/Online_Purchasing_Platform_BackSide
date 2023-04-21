@@ -174,4 +174,51 @@ router.post('/delete', async (req, res, next) => {
     }
 });
 
+router.post('/publish', async (req, res, next) => {
+    const { quotationId, usersId } = req.body;
+
+    console.log(quotationId, usersId);
+
+    const quotation = await Quotation.findById(quotationId);
+
+    console.log(quotation);
+
+    if (!quotation) {
+        res.send({
+            code: 400,
+            msg: '报价单不存在'
+        });
+        return;
+    }
+
+    const users = await User.find({
+        _id: {
+            $in: usersId
+        }
+    });
+
+    console.log(users);
+
+    if (!users) {
+        res.send({
+            code: 400,
+            msg: '用户不存在'
+        });
+        return;
+    }
+
+    for (const user of users) {
+        if (user.receivedQuotations.includes(quotation._id)) {
+            continue;
+        }
+        user.receivedQuotations.push(quotation._id);
+        await user.save();
+    }
+
+    res.send({
+        code: 200,
+        msg: '发布成功'
+    });
+});
+
 module.exports = router;
