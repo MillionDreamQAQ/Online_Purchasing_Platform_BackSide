@@ -76,6 +76,11 @@ router.post('/login', async (req, res, next) => {
                 console.error('Token生成失败', err);
             }
 
+            res.cookie('username', username, {
+                maxAge: 1000 * 60 * 60 * 24 * 7,
+                httpOnly: false
+            });
+
             res.cookie('userId', user._id.toString(), {
                 maxAge: 1000 * 60 * 60 * 24 * 7,
                 httpOnly: true
@@ -129,6 +134,28 @@ router.get('/findById', async (req, res, next) => {
     }
 });
 
+router.get('/listWithoutMe', async (req, res, next) => {
+    const id = req.cookies.userId;
+
+    const users = await User.find({
+        _id: {
+            $ne: id
+        }
+    });
+
+    if (users) {
+        res.send({
+            code: 200,
+            users
+        });
+    } else {
+        res.send({
+            code: 400,
+            msg: '用户不存在'
+        });
+    }
+});
+
 router.get('/list', async (req, res, next) => {
     const users = await User.find();
 
@@ -138,6 +165,17 @@ router.get('/list', async (req, res, next) => {
             users
         });
     }
+});
+
+router.get('/logout', async (req, res, next) => {
+    res.clearCookie('username');
+    res.clearCookie('userId');
+    res.clearCookie('token');
+
+    res.send({
+        code: 200,
+        msg: '退出成功'
+    });
 });
 
 module.exports = router;
