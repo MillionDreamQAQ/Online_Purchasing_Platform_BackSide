@@ -5,6 +5,7 @@ const { Quotation } = require('../model/quotation');
 const { Template } = require('../model/template');
 const { User } = require('../model/user');
 const { ReceivedQuotation } = require('../model/receivedQuotation');
+const { FinishedQuotation } = require('../model/finishedQuotation');
 
 function valid(cookie, username) {
     return bcrypt.compareSync(username, cookie, function (err, result) {
@@ -28,6 +29,14 @@ router.post('/add', async (req, res, next) => {
     const userId = req.cookies.userId;
 
     const user = await User.findById(userId);
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
 
     if (valid(req.cookies.token, user.username) === false) {
         res.send({
@@ -141,6 +150,14 @@ router.post('/delete', async (req, res, next) => {
 
     const user = await User.findById(userId);
 
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
     if (valid(req.cookies.token, user.username) === false) {
         res.send({
             code: 400,
@@ -178,8 +195,28 @@ router.post('/delete', async (req, res, next) => {
 });
 
 router.post('/publish', async (req, res, next) => {
-    const { quotationId, usersId } = req.body;
+    const { quotationId, targetUsersId } = req.body;
     const publisherId = req.cookies.userId;
+
+    const currentUserId = req.cookies.userId;
+
+    const user = await User.findById(currentUserId);
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    if (valid(req.cookies.token, user.username) === false) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
 
     const quotation = await Quotation.findById(quotationId);
 
@@ -193,7 +230,7 @@ router.post('/publish', async (req, res, next) => {
 
     const users = await User.find({
         _id: {
-            $in: usersId
+            $in: targetUsersId
         }
     });
 
@@ -205,31 +242,12 @@ router.post('/publish', async (req, res, next) => {
         return;
     }
 
-    const newQuotation = await Quotation.findById(quotationId)
-        .populate('template')
-        .populate('selectedTemplate')
-        .lean();
-
     for (const user of users) {
-        const tempReceivedQuotation = await ReceivedQuotation.findOne({
-            quotation: Object.assign({}, newQuotation),
-            publisher: publisherId,
-            receiver: user._id
-        });
-
-        if (tempReceivedQuotation) {
-            res.send({
-                code: 400,
-                msg: '请勿重复发布报价单'
-            });
-            return;
-        }
-
         const lastReceivedQuotation = await ReceivedQuotation.findOne().sort({ key: -1 });
 
         const receivedQuotation = await ReceivedQuotation.create({
             key: lastReceivedQuotation ? parseInt(lastReceivedQuotation.key) + 1 : 1,
-            quotation: Object.assign({}, newQuotation),
+            quotation: quotation,
             publisher: publisherId,
             receiver: user._id
         });
@@ -242,6 +260,101 @@ router.post('/publish', async (req, res, next) => {
     res.send({
         code: 200,
         msg: '发布成功'
+    });
+});
+
+router.post('/deleteReceived', async (req, res, next) => {
+    const { receivedQuotationId } = req.body;
+
+    const userId = req.cookies.userId;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    if (valid(req.cookies.token, user.username) === false) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    for (const receivedQuotation of user.receivedQuotations) {
+        if (receivedQuotation._id.toString() === receivedQuotationId) {
+            user.receivedQuotations.remove(receivedQuotation);
+            await ReceivedQuotation.findByIdAndDelete(receivedQuotationId);
+            break;
+        }
+    }
+
+    const newUser = await user.save();
+
+    if (newUser) {
+        res.send({
+            code: 200,
+            msg: '拒绝成功'
+        });
+    }
+});
+
+router.post('/finished', async (req, res, next) => {
+    const { username, quotation } = req.body;
+
+    const currentUserId = req.cookies.userId;
+
+    const currentUser = await User.findById(currentUserId);
+
+    if (!currentUser) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    if (valid(req.cookies.token, currentUser.username) === false) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    const targetUser = await User.findOne({
+        username
+    });
+
+    if (!targetUser) {
+        res.send({
+            code: 400,
+            msg: '目标用户不存在'
+        });
+        return;
+    }
+
+    const tempFinishedQuotation = await FinishedQuotation.findOne().sort({ key: -1 });
+
+    const finishedQuotation = await FinishedQuotation.create({
+        key: tempFinishedQuotation ? parseInt(tempFinishedQuotation.key) + 1 : 1,
+        publisher: currentUserId,
+        receiver: targetUser._id,
+        quotation: quotation
+    });
+
+    targetUser.finishedQuotations.push(finishedQuotation._id);
+
+    await targetUser.save();
+
+    res.send({
+        code: 200,
+        msg: '报价成功'
     });
 });
 

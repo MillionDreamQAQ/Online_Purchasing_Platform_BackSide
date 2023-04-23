@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const { User } = require('../model/user');
 const { Quotation } = require('../model/quotation');
 const { ReceivedQuotation } = require('../model/receivedQuotation');
+const { FinishedQuotation } = require('../model/finishedQuotation');
+const { Template } = require('../model/template');
 
 const saltRounds = 10;
 
@@ -104,8 +106,19 @@ router.get('/findById', async (req, res, next) => {
     let index = 0;
     let result;
 
-    const id = req.cookies.userId;
-    const user = await User.findById(id).populate('quotations').populate('receivedQuotations');
+    const userId = req.cookies.userId;
+    const user = await User.findById(userId)
+        .populate('quotations')
+        .populate('receivedQuotations')
+        .populate('finishedQuotations');
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
 
     if (valid(req.cookies.token, user.username) === false) {
         res.send({
@@ -122,7 +135,7 @@ router.get('/findById', async (req, res, next) => {
         const resQuotation = await Quotation.findById(quotation._id)
             .populate('template')
             .populate('selectedTemplate');
-            
+
         result.quotations[index] = resQuotation;
         index++;
     }
@@ -130,12 +143,31 @@ router.get('/findById', async (req, res, next) => {
     index = 0;
     const receivedQuotations = user.receivedQuotations;
     for (const receivedQuotation of receivedQuotations) {
-        const resQuotation = await ReceivedQuotation.findById(receivedQuotation._id)
+        const currentReceivedQuotation = await ReceivedQuotation.findById(receivedQuotation._id)
             .populate('publisher')
             .populate('receiver')
-            .populate('quotation')
-            
-        result.receivedQuotations[index] = resQuotation;
+            .populate('quotation');
+
+        result.receivedQuotations[index] = currentReceivedQuotation;
+
+        const quotation = await Quotation.findById(currentReceivedQuotation.quotation)
+            .populate('template')
+            .populate('selectedTemplate');
+        result.receivedQuotations[index].quotation = quotation;
+
+        index++;
+    }
+
+    index = 0;
+    const finishedQuotations = user.finishedQuotations;
+    for (const finishedQuotation of finishedQuotations) {
+        const currentFinishedQuotation = await FinishedQuotation.findById(finishedQuotation._id)
+            .populate('publisher')
+            .populate('receiver')
+            .populate('quotation');
+
+        result.finishedQuotations[index] = currentFinishedQuotation;
+
         index++;
     }
 
@@ -148,11 +180,29 @@ router.get('/findById', async (req, res, next) => {
 });
 
 router.get('/listWithoutMe', async (req, res, next) => {
-    const id = req.cookies.userId;
+    const userId = req.cookies.userId;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    if (valid(req.cookies.token, user.username) === false) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
 
     const users = await User.find({
         _id: {
-            $ne: id
+            $ne: userId
         }
     });
 
@@ -164,7 +214,7 @@ router.get('/listWithoutMe', async (req, res, next) => {
     } else {
         res.send({
             code: 400,
-            msg: '用户不存在'
+            msg: '检索失败'
         });
     }
 });

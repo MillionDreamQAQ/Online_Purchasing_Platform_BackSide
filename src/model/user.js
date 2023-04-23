@@ -12,6 +12,7 @@ const UserSchema = new mongoose.Schema({
     },
     quotations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Quotation' }],
     receivedQuotations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'ReceivedQuotation' }],
+    finishedQuotations: [{ type: mongoose.Schema.Types.ObjectId, ref: 'FinishedQuotation' }]
 });
 
 const User = mongoose.model('User', UserSchema);
