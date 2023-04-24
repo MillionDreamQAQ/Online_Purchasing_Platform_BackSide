@@ -122,6 +122,14 @@ router.post('/setSelectedTemplate', async (req, res, next) => {
         return;
     }
 
+    if (quotation.publishedLocked === true) {
+        res.send({
+            code: 400,
+            msg: '报价单已发布，不可再次编辑'
+        });
+        return;
+    }
+
     const selectedTemplateId = [];
 
     for (const key of selectedTemplateKey) {
@@ -169,6 +177,14 @@ router.post('/delete', async (req, res, next) => {
     for (const quotation of user.quotations) {
         if (quotation._id.toString() === quotationId) {
             const currentQuotation = await Quotation.findById(quotationId);
+
+            if (currentQuotation.publishedLocked === true) {
+                res.send({
+                    code: 400,
+                    msg: '报价单已发布，不可删除'
+                });
+                return;
+            }
 
             for (const template of currentQuotation.template) {
                 await Template.deleteOne({
@@ -226,6 +242,17 @@ router.post('/publish', async (req, res, next) => {
             msg: '报价单不存在'
         });
         return;
+    }
+
+    if (quotation.publishedLocked === true) {
+        res.send({
+            code: 400,
+            msg: '报价单已发布，不可重复发布'
+        });
+        return;
+    } else {
+        quotation.publishedLocked = true;
+        await quotation.save();
     }
 
     const users = await User.find({
@@ -288,6 +315,23 @@ router.post('/deleteReceived', async (req, res, next) => {
 
     for (const receivedQuotation of user.receivedQuotations) {
         if (receivedQuotation._id.toString() === receivedQuotationId) {
+            const currentReceivedQuotation = await ReceivedQuotation.findById(receivedQuotationId).populate('quotation');
+            if (!currentReceivedQuotation) {
+                res.send({
+                    code: 400,
+                    msg: '报价单不存在'
+                });
+                return;
+            }
+            
+            if (currentReceivedQuotation.quotation.finishedLocked === true) {
+                res.send({
+                    code: 400,
+                    msg: '报价单已完成报价，不可拒绝报价'
+                });
+                return;
+            }
+
             user.receivedQuotations.remove(receivedQuotation);
             await ReceivedQuotation.findByIdAndDelete(receivedQuotationId);
             break;
@@ -337,6 +381,26 @@ router.post('/finished', async (req, res, next) => {
             msg: '目标用户不存在'
         });
         return;
+    }
+
+    const reqQuotation = await Quotation.findById(quotation._id);
+    if (!reqQuotation) {
+        res.send({
+            code: 400,
+            msg: '报价单不存在'
+        });
+        return;
+    }
+
+    if (reqQuotation.finishedLocked === true) {
+        res.send({
+            code: 400,
+            msg: '报价单已完成报价，不可重复报价'
+        });
+        return;
+    } else {
+        reqQuotation.finishedLocked = true;
+        await reqQuotation.save();
     }
 
     const tempFinishedQuotation = await FinishedQuotation.findOne().sort({ key: -1 });
