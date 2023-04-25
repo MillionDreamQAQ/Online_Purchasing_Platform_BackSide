@@ -430,4 +430,66 @@ router.post('/finished', async (req, res, next) => {
     });
 });
 
+router.post('/deleteFinished', async (req, res, next) => {
+    const { quotationKey } = req.body;
+
+    const userId = req.cookies.userId;
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    if (valid(req.cookies.token, user.username) === false) {
+        res.send({
+            code: 400,
+            msg: 'token验证失败'
+        });
+        return;
+    }
+
+    const quotation = await Quotation.findOne({
+        key: quotationKey
+    });
+
+    if (!quotation) {
+        res.send({
+            code: 400,
+            msg: '原始报价单不存在' + quotationKey
+        });
+        return;
+    }
+
+    const finishedQuotations = await FinishedQuotation.find({
+        'quotation._id': quotation._id.toString()
+    });
+
+    if (!finishedQuotations || finishedQuotations.length === 0) {
+        res.send({
+            code: 400,
+            msg: '报价单不存在' + quotation._id.toString()
+        });
+        return;
+    }
+
+    for (const finishedQuotation of finishedQuotations) {
+        user.finishedQuotations.remove(finishedQuotation._id);
+        await FinishedQuotation.findByIdAndDelete(finishedQuotation._id);
+    }
+
+    const newUser = await user.save();
+
+    if (newUser) {
+        res.send({
+            code: 200,
+            msg: '删除成功'
+        });
+    }
+});
+
 module.exports = router;
