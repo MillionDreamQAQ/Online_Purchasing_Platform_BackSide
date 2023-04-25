@@ -7,7 +7,8 @@ const TemplateSchema = new mongoose.Schema({
     count: { type: Number, default: 1 },
     price: { type: Number, default: 0 },
     unit: String,
-    desc: String
+    desc: String,
+    total: { type: Number, default: 0 }
 });
 const Template = mongoose.model('Template', TemplateSchema);
 module.exports = { Template };
