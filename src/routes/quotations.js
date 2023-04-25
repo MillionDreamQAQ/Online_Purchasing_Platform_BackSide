@@ -56,6 +56,8 @@ router.post('/add', async (req, res, next) => {
                 name: item.name,
                 size: item.size,
                 unit: item.unit,
+                count: item.count,
+                price: item.price,
                 desc: item.desc
             });
             templateRes.push(template._id);
